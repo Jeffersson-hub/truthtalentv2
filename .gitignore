@@ -7,21 +7,38 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Node
+node_modules/
+dist/
+dist-ssr/
+
+# Next.js
+.next/
+out/
+
+# Environments
+.env
+.env.*.local
 *.local
 
-# Editor directories and files
+# Build output
+.cache/
+.vercel/
+
+# IDE & system files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.env
+
+# SSH & secrets (très important pour ton cas)
 truthtalentv2
 truthtalentv2.pub
+*.pem
+*.*
+
