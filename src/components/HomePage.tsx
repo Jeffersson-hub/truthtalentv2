@@ -18,7 +18,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, candidateCount }) => {
                 <Users className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">RecrutPro</h1>
+                <h1 className="text-xl font-bold text-gray-900">Truthtalent</h1>
                 <p className="text-sm text-gray-500">Système de gestion des candidatures</p>
               </div>
             </div>
@@ -34,7 +34,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, candidateCount }) => {
             <Briefcase className="h-12 w-12 text-blue-600" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Bienvenue sur RecrutPro
+            Bienvenue sur Truthtalent
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Votre solution complète pour gérer efficacement vos processus de recrutement. 
@@ -184,7 +184,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate, candidateCount }) => {
         {/* Features Section */}
         <div className="mt-16 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-8">
-            Pourquoi choisir RecrutPro ?
+            Pourquoi choisir Truthtalent ?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="p-4">

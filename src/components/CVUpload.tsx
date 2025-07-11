@@ -50,24 +50,38 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
     }
   };
 
-  const processFiles = (files: File[]) => {
-    const newProgress: UploadProgress[] = files.map(file => ({
-      fileName: file.name,
-      progress: 0,
-      status: 'uploading'
-    }));
-    
-    setUploadProgress(newProgress);
+  const processFiles = async (files: File[]) => {
+  const newProgress: UploadProgress[] = files.map(file => ({
+    fileName: file.name,
+    progress: 0,
+    status: 'uploading'
+  }));
 
-    // Simuler l'upload et le traitement
-    files.forEach((file, index) => {
-      simulateUpload(file.name, index);
-    });
+  setUploadProgress(newProgress);
 
-    onFilesUploaded(files);
-  };
+  for (let index = 0; index < files.length; index++) {
+    const file = files[index];
+    const url = await uploadToBackend(file);
 
-  const simulateUpload = (fileName: string, index: number) => {
+    setUploadProgress(prev =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              progress: 100,
+              status: url ? 'completed' : 'error'
+            }
+          : item
+      )
+    );
+
+    // Optionnel : envoie vers Airtable ici avec le `url`, `file.name`, etc.
+  }
+
+  onFilesUploaded(files);
+};
+
+  const uploadToBackend = (fileName: string, index: number) => {
     let progress = 0;
     const interval = setInterval(() => {
       progress += Math.random() * 15;
@@ -120,7 +134,7 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
           Glissez-déposez vos CV ici
         </h3>
         <p className="text-gray-500 mb-4">
-          ou cliquez pour sélectionner des fichiers PDF
+          ou cliquez pour sélectionner des fichiers
         </p>
         
         <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
@@ -200,6 +214,24 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
       )}
     </div>
   );
+};
+
+const uploadToBackend = async (file: File): Promise<string | null> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await fetch("/api/upload-from-ui", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+    return data?.url || null;
+  } catch (err) {
+    console.error("Erreur upload backend:", err);
+    return null;
+  }
 };
 
 export default CVUpload;

@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Briefcase, Star, GraduationCap, Filter, Plus, X } from 'lucide-react';
-import { FilterCriteria } from '../types';
+import { FilterCriteria, Candidate } from '../types';
 
 interface FilterPanelProps {
   onFilterChange: (filters: FilterCriteria) => void;
   candidateCount: number;
+  candidates: Candidate[];
 }
 
-const FilterPanel: React.FC<FilterPanelProps> = ({ onFilterChange, candidateCount }) => {
+const FilterPanel: React.FC<FilterPanelProps> = ({ onFilterChange, candidateCount, candidates }) => {
   const [filters, setFilters] = useState<FilterCriteria>({
     position: '',
     skills: [],
@@ -19,30 +20,19 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onFilterChange, candidateCoun
 
   const [customPosition, setCustomPosition] = useState('');
   const [showCustomPosition, setShowCustomPosition] = useState(false);
+  const [customSkill, setCustomSkill] = useState('');
+  const [showCustomSkill, setShowCustomSkill] = useState(false);
+  const [skillSuggestions, setSkillSuggestions] = useState<string[]>([]);
+  const [customPositions, setCustomPositions] = useState<string[]>([]);
+  const [customSkills, setCustomSkills] = useState<string[]>([]);
 
-  const predefinedPositions = [
-    'Développeur Frontend',
-    'Développeur Backend',
-    'Développeur Full Stack',
-    'Développeur Mobile',
-    'Data Scientist',
-    'Data Analyst',
-    'UX/UI Designer',
-    'Product Designer',
-    'Chef de Projet',
-    'Product Manager',
-    'Architecte Solution',
-    'Architecte Logiciel',
-    'DevOps Engineer',
-    'Ingénieur Cloud',
-    'Consultant IT',
-    'Business Analyst',
-    'Testeur QA',
-    'Scrum Master',
-    'Tech Lead',
-    'CTO'
-  ];
+  // Extraire les données uniques des CV téléversés
+  const extractedPositions = [...new Set(candidates.map(c => c.position))].filter(Boolean);
+  const extractedSkills = [...new Set(candidates.flatMap(c => c.skills))].filter(Boolean);
+  const extractedLocations = [...new Set(candidates.map(c => c.location))].filter(Boolean);
+  const extractedEducations = [...new Set(candidates.map(c => c.education))].filter(Boolean);
 
+  // Compétences prédéfinies pour les suggestions
   const predefinedSkills = [
     // Langages de programmation
     'JavaScript', 'TypeScript', 'Python', 'Java', 'C#', 'PHP', 'Ruby', 'Go', 'Rust', 'C++', 'Swift', 'Kotlin',
@@ -64,32 +54,64 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onFilterChange, candidateCoun
     'Figma', 'Adobe XD', 'Sketch', 'Photoshop', 'Illustrator', 'InVision', 'Principle'
   ];
 
-  const locations = [
-    // Grandes villes
+  // Localisations prédéfinies
+  const predefinedLocations = [
     'Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Montpellier', 'Strasbourg', 'Bordeaux', 'Lille',
     'Rennes', 'Reims', 'Saint-Étienne', 'Toulon', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne',
-    // Départements populaires
     'Île-de-France', 'Rhône-Alpes', 'Provence-Alpes-Côte d\'Azur', 'Occitanie', 'Nouvelle-Aquitaine',
     'Hauts-de-France', 'Grand Est', 'Pays de la Loire', 'Bretagne', 'Normandie',
-    // Options spéciales
     'Remote', 'Télétravail', 'Hybride', 'France entière', 'International'
   ];
 
   const educationLevels = [
-    'Bac',
-    'Bac+1',
-    'Bac+2 (BTS/DUT)',
-    'Bac+3 (Licence)',
-    'Bac+4',
-    'Bac+5 (Master)',
-    'Bac+6',
-    'Bac+8 (Doctorat)',
-    'École d\'ingénieur',
-    'École de commerce',
-    'Formation professionnelle',
-    'Autodidacte',
-    'Certification professionnelle'
+    'Bac', 'Bac+1', 'Bac+2 (BTS/DUT)', 'Bac+3 (Licence)', 'Bac+4', 'Bac+5 (Master)', 'Bac+6', 'Bac+8 (Doctorat)',
+    'École d\'ingénieur', 'École de commerce', 'Formation professionnelle', 'Autodidacte', 'Certification professionnelle'
   ];
+
+  // Combiner les données extraites avec les données prédéfinies et personnalisées
+  const allPositions = [...new Set([...extractedPositions, ...customPositions])].sort();
+  const allSkills = [...new Set([...extractedSkills, ...predefinedSkills, ...customSkills])].sort();
+  const allLocations = [...new Set([...extractedLocations, ...predefinedLocations])].sort();
+  const allEducations = [...new Set([...extractedEducations, ...educationLevels])].sort();
+
+  // Charger les données personnalisées depuis le localStorage
+  useEffect(() => {
+    const savedPositions = localStorage.getItem('customPositions');
+    const savedSkills = localStorage.getItem('customSkills');
+    
+    if (savedPositions) {
+      setCustomPositions(JSON.parse(savedPositions));
+    }
+    if (savedSkills) {
+      setCustomSkills(JSON.parse(savedSkills));
+    }
+  }, []);
+
+  // Sauvegarder les données personnalisées dans le localStorage
+  const saveCustomData = (type: 'positions' | 'skills', data: string[]) => {
+    if (type === 'positions') {
+      localStorage.setItem('customPositions', JSON.stringify(data));
+    } else {
+      localStorage.setItem('customSkills', JSON.stringify(data));
+    }
+  };
+
+  // Gérer les suggestions de compétences
+  const handleSkillInputChange = (value: string) => {
+    setCustomSkill(value);
+    
+    if (value.length > 0) {
+      const suggestions = allSkills
+        .filter(skill => 
+          skill.toLowerCase().includes(value.toLowerCase()) && 
+          !filters.skills.includes(skill)
+        )
+        .slice(0, 8);
+      setSkillSuggestions(suggestions);
+    } else {
+      setSkillSuggestions([]);
+    }
+  };
 
   const updateFilters = (newFilters: Partial<FilterCriteria>) => {
     const updated = { ...filters, ...newFilters };
@@ -109,9 +131,16 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onFilterChange, candidateCoun
   };
 
   const handleCustomPositionSubmit = () => {
+    if (customPosition.trim() && !allPositions.includes(customPosition.trim())) {
+      const newCustomPositions = [...customPositions, customPosition.trim()];
+      setCustomPositions(newCustomPositions);
+      saveCustomData('positions', newCustomPositions);
+    }
+    
     if (customPosition.trim()) {
       updateFilters({ position: customPosition.trim() });
       setShowCustomPosition(false);
+      setCustomPosition('');
     }
   };
 
@@ -120,6 +149,23 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onFilterChange, candidateCoun
       updateFilters({
         skills: [...filters.skills, skill]
       });
+    }
+    setCustomSkill('');
+    setSkillSuggestions([]);
+    setShowCustomSkill(false);
+  };
+
+  const handleCustomSkillSubmit = () => {
+    if (customSkill.trim()) {
+      // Ajouter à la liste des compétences personnalisées si elle n'existe pas
+      if (!allSkills.includes(customSkill.trim())) {
+        const newCustomSkills = [...customSkills, customSkill.trim()];
+        setCustomSkills(newCustomSkills);
+        saveCustomData('skills', newCustomSkills);
+      }
+      
+      // Ajouter aux filtres
+      addSkill(customSkill.trim());
     }
   };
 
@@ -140,7 +186,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onFilterChange, candidateCoun
     };
     setFilters(emptyFilters);
     setCustomPosition('');
+    setCustomSkill('');
     setShowCustomPosition(false);
+    setShowCustomSkill(false);
+    setSkillSuggestions([]);
     onFilterChange(emptyFilters);
   };
 
@@ -171,10 +220,21 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onFilterChange, candidateCoun
               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             >
               <option value="">Tous les postes</option>
-              {predefinedPositions.map(position => (
-                <option key={position} value={position}>{position}</option>
-              ))}
-              <option value="custom">✏️ Saisir un poste personnalisé</option>
+              {extractedPositions.length > 0 && (
+                <optgroup label="📋 Postes des CV téléversés">
+                  {extractedPositions.map(position => (
+                    <option key={position} value={position}>{position}</option>
+                  ))}
+                </optgroup>
+              )}
+              {customPositions.length > 0 && (
+                <optgroup label="✏️ Postes personnalisés">
+                  {customPositions.map(position => (
+                    <option key={position} value={position}>{position}</option>
+                  ))}
+                </optgroup>
+              )}
+              <option value="custom">➕ Ajouter un poste personnalisé</option>
             </select>
           ) : (
             <div className="flex space-x-2">
@@ -218,22 +278,93 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onFilterChange, candidateCoun
             <span>Compétences requises</span>
           </label>
           
-          <select
-            onChange={(e) => {
-              if (e.target.value) {
-                addSkill(e.target.value);
-                e.target.value = '';
-              }
-            }}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors mb-2"
-          >
-            <option value="">Sélectionner une compétence...</option>
-            {predefinedSkills
-              .filter(skill => !filters.skills.includes(skill))
-              .map(skill => (
-                <option key={skill} value={skill}>{skill}</option>
-              ))}
-          </select>
+          {!showCustomSkill ? (
+            <select
+              onChange={(e) => {
+                if (e.target.value === 'custom') {
+                  setShowCustomSkill(true);
+                } else if (e.target.value) {
+                  addSkill(e.target.value);
+                  e.target.value = '';
+                }
+              }}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors mb-2"
+            >
+              <option value="">Sélectionner une compétence...</option>
+              {extractedSkills.length > 0 && (
+                <optgroup label="🎯 Compétences des CV téléversés">
+                  {extractedSkills
+                    .filter(skill => !filters.skills.includes(skill))
+                    .map(skill => (
+                      <option key={skill} value={skill}>{skill}</option>
+                    ))}
+                </optgroup>
+              )}
+              {predefinedSkills
+                .filter(skill => !filters.skills.includes(skill) && !extractedSkills.includes(skill))
+                .length > 0 && (
+                <optgroup label="💼 Compétences courantes">
+                  {predefinedSkills
+                    .filter(skill => !filters.skills.includes(skill) && !extractedSkills.includes(skill))
+                    .slice(0, 20)
+                    .map(skill => (
+                      <option key={skill} value={skill}>{skill}</option>
+                    ))}
+                </optgroup>
+              )}
+              <option value="custom">➕ Ajouter une compétence personnalisée</option>
+            </select>
+          ) : (
+            <div className="relative mb-2">
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={customSkill}
+                  onChange={(e) => handleSkillInputChange(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleCustomSkillSubmit();
+                    }
+                  }}
+                  placeholder="Saisir une compétence..."
+                  className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  autoFocus
+                />
+                <button
+                  onClick={handleCustomSkillSubmit}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCustomSkill(false);
+                    setCustomSkill('');
+                    setSkillSuggestions([]);
+                  }}
+                  className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              
+              {/* Suggestions */}
+              {skillSuggestions.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {skillSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => addSkill(suggestion)}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 hover:text-blue-700 transition-colors border-b border-gray-100 last:border-b-0"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           
           {filters.skills.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -310,20 +441,33 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onFilterChange, candidateCoun
             className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           >
             <option value="">Toutes les localisations</option>
+            {extractedLocations.length > 0 && (
+              <optgroup label="📍 Localisations des CV téléversés">
+                {extractedLocations.map(location => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
+              </optgroup>
+            )}
             <optgroup label="🏙️ Grandes villes">
-              {locations.slice(0, 20).map(location => (
-                <option key={location} value={location}>{location}</option>
-              ))}
+              {predefinedLocations.slice(0, 20)
+                .filter(location => !extractedLocations.includes(location))
+                .map(location => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
             </optgroup>
             <optgroup label="🗺️ Régions">
-              {locations.slice(20, 30).map(location => (
-                <option key={location} value={location}>{location}</option>
-              ))}
+              {predefinedLocations.slice(20, 30)
+                .filter(location => !extractedLocations.includes(location))
+                .map(location => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
             </optgroup>
             <optgroup label="💻 Travail à distance">
-              {locations.slice(30).map(location => (
-                <option key={location} value={location}>{location}</option>
-              ))}
+              {predefinedLocations.slice(30)
+                .filter(location => !extractedLocations.includes(location))
+                .map(location => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
             </optgroup>
           </select>
         </div>
@@ -340,9 +484,24 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onFilterChange, candidateCoun
             className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           >
             <option value="">Tous les niveaux</option>
-            {educationLevels.map(level => (
-              <option key={level} value={level}>{level}</option>
-            ))}
+            {extractedEducations.length > 0 && (
+              <optgroup label="🎓 Formations des CV téléversés">
+                {extractedEducations.map(education => (
+                  <option key={education} value={education}>{education}</option>
+                ))}
+              </optgroup>
+            )}
+            {educationLevels
+              .filter(level => !extractedEducations.includes(level))
+              .length > 0 && (
+              <optgroup label="📚 Niveaux standards">
+                {educationLevels
+                  .filter(level => !extractedEducations.includes(level))
+                  .map(level => (
+                    <option key={level} value={level}>{level}</option>
+                  ))}
+              </optgroup>
+            )}
           </select>
         </div>
 
