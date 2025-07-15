@@ -1,6 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, FileText, X, CheckCircle, AlertCircle } from 'lucide-react';
-import { UploadProgress } from '../types';
+
+interface UploadProgress {
+  fileName: string;
+  progress: number;
+  status: 'uploading' | 'processing' | 'completed' | 'error';
+}
 
 interface CVUploadProps {
   onFilesUploaded: (files: File[]) => void;
@@ -23,21 +28,19 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    
-    const files = Array.from(e.dataTransfer.files).filter(
-      file => {
-        const allowedTypes = [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        ];
-        const allowedExtensions = ['.pdf', '.doc', '.docx'];
-        
-        return allowedTypes.includes(file.type) || 
-               allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-      }
-    );
-    
+
+    const files = Array.from(e.dataTransfer.files).filter(file => {
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+      const allowedExtensions = ['.pdf', '.doc', '.docx'];
+
+      return allowedTypes.includes(file.type) ||
+        allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+    });
+
     if (files.length > 0) {
       processFiles(files);
     }
@@ -51,62 +54,61 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
   };
 
   const processFiles = async (files: File[]) => {
-  const newProgress: UploadProgress[] = files.map(file => ({
-    fileName: file.name,
-    progress: 0,
-    status: 'uploading'
-  }));
+    const newProgress: UploadProgress[] = files.map(file => ({
+      fileName: file.name,
+      progress: 0,
+      status: 'uploading'
+    }));
 
-  setUploadProgress(newProgress);
+    setUploadProgress(newProgress);
 
-  for (let index = 0; index < files.length; index++) {
-    const file = files[index];
-    const url = await uploadToBackend(file);
+    for (let index = 0; index < files.length; index++) {
+      const file = files[index];
 
-    setUploadProgress(prev =>
-      prev.map((item, i) =>
-        i === index
-          ? {
-              ...item,
-              progress: 100,
-              status: url ? 'completed' : 'error'
-            }
-          : item
-      )
-    );
+      const url = await uploadToUploadThing(file);
 
-    // Optionnel : envoie vers Airtable ici avec le `url`, `file.name`, etc.
-  }
-
-  onFilesUploaded(files);
-};
-
-  const uploadToBackend = (fileName: string, index: number) => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 15;
-      
-      setUploadProgress(prev => 
-        prev.map((item, i) => 
-          i === index ? {
-            ...item,
-            progress: Math.min(progress, 100),
-            status: progress >= 100 ? 'processing' : 'uploading'
-          } : item
+      setUploadProgress(prev =>
+        prev.map((item, i) =>
+          i === index
+            ? {
+                ...item,
+                progress: 100,
+                status: url ? 'completed' : 'error'
+              }
+            : item
         )
       );
+    }
 
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setUploadProgress(prev => 
-            prev.map((item, i) => 
-              i === index ? { ...item, status: 'completed' } : item
-            )
-          );
-        }, 1500);
+    onFilesUploaded(files);
+  };
+
+  const uploadToUploadThing = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append("files", file);
+
+    try {
+      const response = await fetch("https://uploadthing.com/api/uploadFiles", {
+        method: "POST",
+        headers: {
+          "x-uploadthing-api-key": import.meta.env.VITE_UPLOADTHING_SECRET as string,
+          "x-uploadthing-slug": "cvUploader",
+        },
+        body: formData,
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json[0]?.url) {
+        console.error("UploadThing Error", json);
+        return null;
       }
-    }, 200);
+
+      return json[0].url;
+    } catch (err) {
+      console.error("Erreur UploadThing:", err);
+      return null;
+    }
   };
 
   const removeUpload = (index: number) => {
@@ -118,7 +120,7 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
       <h2 className="text-lg font-semibold text-gray-900 mb-4">
         Téléverser des CV
       </h2>
-      
+
       <div
         className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
           isDragOver
@@ -136,7 +138,7 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
         <p className="text-gray-500 mb-4">
           ou cliquez pour sélectionner des fichiers
         </p>
-        
+
         <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
           <FileText className="h-4 w-4 mr-2" />
           Choisir des fichiers
@@ -148,7 +150,7 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
             className="hidden"
           />
         </label>
-        
+
         <p className="text-xs text-gray-400 mt-2">
           Formats acceptés: PDF, DOC, DOCX
         </p>
@@ -184,7 +186,7 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                
+
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
                     className={`h-2 rounded-full transition-all duration-300 ${
@@ -197,7 +199,7 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
                     style={{ width: `${item.progress}%` }}
                   ></div>
                 </div>
-                
+
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
                   <span>
                     {item.status === 'uploading' && 'Téléversement...'}
@@ -214,24 +216,6 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
       )}
     </div>
   );
-};
-
-const uploadToBackend = async (file: File): Promise<string | null> => {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  try {
-    const res = await fetch("/api/upload-from-ui", {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await res.json();
-    return data?.url || null;
-  } catch (err) {
-    console.error("Erreur upload backend:", err);
-    return null;
-  }
 };
 
 export default CVUpload;
