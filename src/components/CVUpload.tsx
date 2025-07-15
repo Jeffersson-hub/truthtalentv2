@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Upload, FileText, X, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -65,7 +66,7 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
     for (let index = 0; index < files.length; index++) {
       const file = files[index];
 
-      const url = await uploadToUploadThing(file);
+      const url = await uploadToBackend(file);
 
       setUploadProgress(prev =>
         prev.map((item, i) =>
@@ -83,30 +84,20 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
     onFilesUploaded(files);
   };
 
-  const uploadToUploadThing = async (file: File): Promise<string | null> => {
+  const uploadToBackend = async (file: File): Promise<string | null> => {
     const formData = new FormData();
-    formData.append("files", file);
+    formData.append("file", file);
 
     try {
-      const response = await fetch("https://uploadthing.com/api/uploadFiles", {
+      const res = await fetch("/api/upload-and-analyze", {
         method: "POST",
-        headers: {
-          "x-uploadthing-api-key": import.meta.env.VITE_UPLOADTHING_SECRET as string,
-          "x-uploadthing-slug": "cvUploader",
-        },
         body: formData,
       });
 
-      const json = await response.json();
-
-      if (!response.ok || !json[0]?.url) {
-        console.error("UploadThing Error", json);
-        return null;
-      }
-
-      return json[0].url;
+      const data = await res.json();
+      return data?.url || null;
     } catch (err) {
-      console.error("Erreur UploadThing:", err);
+      console.error("Erreur upload backend:", err);
       return null;
     }
   };
@@ -117,27 +108,17 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">
-        Téléverser des CV
-      </h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">Téléverser des CV</h2>
 
       <div
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
-          isDragOver
-            ? 'border-blue-400 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
-        }`}
+        className={\`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 \${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}\`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          Glissez-déposez vos CV ici
-        </h3>
-        <p className="text-gray-500 mb-4">
-          ou cliquez pour sélectionner des fichiers
-        </p>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Glissez-déposez vos CV ici</h3>
+        <p className="text-gray-500 mb-4">ou cliquez pour sélectionner des fichiers</p>
 
         <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
           <FileText className="h-4 w-4 mr-2" />
@@ -151,33 +132,23 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
           />
         </label>
 
-        <p className="text-xs text-gray-400 mt-2">
-          Formats acceptés: PDF, DOC, DOCX
-        </p>
+        <p className="text-xs text-gray-400 mt-2">Formats acceptés: PDF, DOC, DOCX</p>
       </div>
 
       {uploadProgress.length > 0 && (
         <div className="mt-6">
-          <h3 className="text-sm font-medium text-gray-900 mb-3">
-            Progression du téléversement
-          </h3>
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Progression du téléversement</h3>
           <div className="space-y-3">
             {uploadProgress.map((item, index) => (
               <div key={index} className="bg-gray-50 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-2">
-                    {item.status === 'completed' && (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    )}
-                    {item.status === 'error' && (
-                      <AlertCircle className="h-4 w-4 text-red-500" />
-                    )}
+                    {item.status === 'completed' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                    {item.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
                     {(item.status === 'uploading' || item.status === 'processing') && (
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
                     )}
-                    <span className="text-sm font-medium text-gray-900">
-                      {item.fileName}
-                    </span>
+                    <span className="text-sm font-medium text-gray-900">{item.fileName}</span>
                   </div>
                   <button
                     onClick={() => removeUpload(index)}
@@ -186,20 +157,12 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFilesUploaded }) => {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      item.status === 'completed'
-                        ? 'bg-green-500'
-                        : item.status === 'error'
-                        ? 'bg-red-500'
-                        : 'bg-blue-500'
-                    }`}
-                    style={{ width: `${item.progress}%` }}
+                    className={\`h-2 rounded-full transition-all duration-300 \${item.status === 'completed' ? 'bg-green-500' : item.status === 'error' ? 'bg-red-500' : 'bg-blue-500'}\`}
+                    style={{ width: \`\${item.progress}%\` }}
                   ></div>
                 </div>
-
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
                   <span>
                     {item.status === 'uploading' && 'Téléversement...'}
